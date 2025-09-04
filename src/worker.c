@@ -124,17 +124,20 @@ int main(int argc, char *argv[]) {
         // TODO 3: Verificar periodicamente se outro worker já encontrou a senha
         // DICA: A cada PROGRESS_INTERVAL senhas, verificar se arquivo resultado existe
         
-        // TODO 4: Calcular o hash MD5 da senha atual
-        // IMPORTANTE: Use a biblioteca MD5 FORNECIDA - md5_string(senha, hash_buffer)
+        //chamada para md5_string
+        md5_string(current_password, computed_hash);
         
-        // TODO 5: Comparar com o hash alvo
-        // Se encontrou: salvar resultado e terminar
-        
-        // TODO 6: Incrementar para a próxima senha
-        // DICA: Use a função increment_password implementada acima
-        
-        // TODO: Verificar se chegou ao fim do intervalo
-        // Se sim: terminar loop
+        //compara hash computado com o hash alvo da senha
+        if (strcmp(computed_hash, target_hash) == 0){
+            save_result(worker_id, current_password);
+            return 0;
+        }else{
+            //incrementa para a proxima senha e verifica se chegou ao fim
+            //se retorna 0, não tem mais senhas para testar
+            if (increment_password(current_password, charset, charset_len, password_len) == 0){
+                break; //sai do while
+            }
+        }
         
         passwords_checked++;
     }
