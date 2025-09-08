@@ -1,6 +1,6 @@
 # Relatório: Mini-Projeto 1 - Quebra-Senhas Paralelo
 
-**Aluno(s):** Nome (Matrícula), Nome (Matrícula),,,  
+**Aluno(s):** Sofia Castelli (10443550), Enrique Cipolla Martins (10427834), Henrique Ferreira Marciano (10439797), Matheus Guion (10437693)  
 ---
 
 ## 1. Estratégia de Paralelização
@@ -8,12 +8,31 @@
 
 **Como você dividiu o espaço de busca entre os workers?**
 
-[Explique seu algoritmo de divisão]
+O coordenador recebe como entrada o hash alvo, o tamanho da senha, o charset e o número de workers.
+Ele calcula o espaço total de busca C^L (onde C = tamanho do charset e L = tamanho da senha) e divide esse espaço igualmente entre os workers.
+Cada worker recebe um intervalo definido por senha inicial e senha final. Esse intervalo é calculado convertendo índices em base C para strings no charset. Assim, os workers percorrem senhas em ordem lexicográfica sem sobreposição.
+Exemplo:
+	•	Para charset="abc", tamanho=3 → total de 27 combinações.
+	•	Com 2 workers:
+	•	Worker 0 recebe de aaa até acb.
+	•	Worker 1 recebe de acc até ccc.
 
-**Código relevante:** Cole aqui a parte do coordinator.c onde você calcula a divisão:
-```c
-// Cole seu código de divisão aqui
-```
+Isso garante balanceamento de carga e exploração completa do espaço de busca.
+
+**Código relevante:** 
+long long total = pow(charset_len, password_len);
+long long base = total / num_workers;
+long long remainder = total % num_workers;
+
+for (int i = 0; i < num_workers; i++) {
+    long long start = i * base + (i < remainder ? i : remainder);
+    long long end   = start + base - 1 + (i < remainder ? 1 : 0);
+
+    index_to_password(start, charset, password_len, start_password);
+    index_to_password(end, charset, password_len, end_password);
+
+    // argumentos passados via exec para o worker
+}
 
 ---
 
@@ -21,12 +40,32 @@
 
 **Descreva como você usou fork(), execl() e wait() no coordinator:**
 
-[Explique em um parágrafo como você criou os processos, passou argumentos e esperou pela conclusão]
+O coordenador cria os processos filhos em um loop usando fork().
+	•	Se pid == 0 (processo filho), ele prepara os argumentos (hash, senha inicial, senha final, charset, tamanho, ID) e chama execl() para substituir a imagem do processo pelo executável worker.
+	•	Se pid > 0 (processo pai), armazena o PID do worker e continua o loop.
+	•	Após criar todos os workers, o coordenador executa um loop de wait() para garantir que todos terminem, evitando processos zumbis.   
 
 **Código do fork/exec:**
-```c
-// Cole aqui seu loop de criação de workers
-```
+for (int i = 0; i < num_workers; i++) {
+    pid_t pid = fork();
+    if (pid < 0) {
+        perror("fork");
+        exit(1);
+    } else if (pid == 0) {
+        execl("./worker", "worker",
+              target_hash, start_password, end_password,
+              charset, passlen_str, worker_id_str, (char*)NULL);
+        perror("execl"); 
+        exit(1);
+    } else {
+        workers[i] = pid;
+    }
+}
+
+for (int i = 0; i < num_workers; i++) {
+    int status;
+    wait(&status);
+}
 
 ---
 
