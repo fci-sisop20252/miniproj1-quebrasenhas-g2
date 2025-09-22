@@ -84,6 +84,20 @@ void save_result(int worker_id, const char *password) {
     // - Tentar abrir arquivo com O_CREAT | O_EXCL | O_WRONLY
     // - Se sucesso: escrever resultado e fechar
     // - Se falhou: outro worker já encontrou
+    int fd = open(RESULT_FILE, O_WRONLY | O_CREAT | O_EXCL, 0644);
+
+    if(fd < 0){
+        return;
+    }
+
+    char buffer[256];
+    int len = snprintf(buffer, sizeof(buffer), "%d:%s\n", worker_id, password);
+    if(len > 0){
+        write(fd, buffer, len);
+    }
+    close(fd);
+
+    printf("[Worker %d] SENHA ENCONTRADA: %s. Resultado salvo em %s.\n", worker_id, password, RESULT_FILE);
 }
 
 /**
@@ -123,6 +137,12 @@ int main(int argc, char *argv[]) {
     while (1) {
         // TODO 3: Verificar periodicamente se outro worker já encontrou a senha
         // DICA: A cada PROGRESS_INTERVAL senhas, verificar se arquivo resultado existe
+        if(passwords_checked > 0 && passwords_checked % PROGRESS_INTERVAL == 0){
+            if(check_result_exists()){
+                printf("[Worker %d] Arquivo de resultado encontrado. Encerrando busca.\n", worker_id);
+                break;
+            }
+        }
         
         //chamada para md5_string
         md5_string(current_password, computed_hash);
